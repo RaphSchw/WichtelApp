@@ -9,7 +9,9 @@ export async function createFirebaseStore({ emulator = false } = {}) {
   const config = emulator ? { apiKey: 'demo-key', authDomain: 'localhost', projectId: 'demo-wichteln' } : firebaseConfig;
   const app = initializeApp(config);
   const auth = A.getAuth(app);
-  const db = F.getFirestore(app);
+  // Fallback, falls die Live-Verbindung (WebChannel) blockiert wird: Long-Polling erzwingen.
+  let forceLP = false; try { forceLP = localStorage.getItem('wichtel-longpolling') === '1'; } catch (e) {}
+  const db = forceLP ? F.initializeFirestore(app, { experimentalForceLongPolling: true }) : F.getFirestore(app);
   if (emulator) {
     A.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
     F.connectFirestoreEmulator(db, '127.0.0.1', 8080);
@@ -33,5 +35,24 @@ export async function createFirebaseStore({ emulator = false } = {}) {
     deleteGroup: (uid, id) => F.deleteDoc(F.doc(db, 'users', uid, 'groups', id)),
     async loadSettings(uid) { const s = await F.getDoc(F.doc(db, 'users', uid)); return s.exists() ? s.data() : {}; },
     saveSettings: (uid, data) => F.setDoc(F.doc(db, 'users', uid), clean(data), { merge: true }),
+    longPolling: forceLP,
+    useLongPolling() { try { localStorage.setItem('wichtel-longpolling', '1'); } catch (e) {} },
+    /** Fragt die Datenbank einmal direkt (ohne Live-Verbindung) und liefert die Ursache, falls etwas nicht stimmt. */
+    async diagnose(uid) {
+      if (emulator) return 'ok';
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${uid}?key=${config.apiKey}`;
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const body = await r.text();
+        console.warn('Firestore-Diagnose', r.status, body.slice(0, 500));
+        if (r.ok) return 'realtime-blocked';
+        if (r.status === 404 && /database.*does not exist|not exist.*database/i.test(body)) return 'no-database';
+        if (r.status === 404) return 'realtime-blocked';
+        if (r.status === 403 && /API_KEY|blocked|referer|SERVICE_DISABLED|has not been used/i.test(body)) return 'api-key-blocked';
+        if (r.status === 403) return 'permission-denied';
+        return 'http-' + r.status;
+      } catch (e) { console.warn('Firestore-Diagnose fehlgeschlagen', e); return 'network'; }
+    },
   };
 }

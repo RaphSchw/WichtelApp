@@ -46,7 +46,11 @@ function syncError(code) {
     'unauthenticated': 'Anmeldung abgelaufen – bitte ab- und wieder anmelden.',
     'resource-exhausted': 'Das kostenlose Tageskontingent der Datenbank ist aufgebraucht – morgen geht es weiter.',
     'unavailable': 'Datenbank nicht erreichbar – Internetverbindung oder Werbeblocker (z. B. Brave Shields) prüfen.',
-    'timeout': 'Keine Antwort von der Datenbank – Werbeblocker (z. B. Brave Shields) für diese Seite ausschalten oder Internet prüfen.',
+    'timeout': 'Keine Antwort von der Datenbank – Ursache wird geprüft …',
+    'no-database': 'Die Firestore-Datenbank gibt es noch nicht – bitte in Firebase unter „Firestore Database“ anlegen.',
+    'api-key-blocked': 'Der Firebase-Schlüssel darf Firestore nicht nutzen – in Google Cloud beim Schlüssel „Cloud Firestore API“ erlauben.',
+    'realtime-blocked': 'Die Live-Verbindung zur Datenbank wird blockiert – Werbeblocker, Firmen-WLAN oder VPN prüfen.',
+    'network': 'Datenbank nicht erreichbar – Internetverbindung, Werbeblocker oder VPN prüfen.',
   })[code] || 'Speichern gerade nicht möglich';
 }
 function syncHtml(slim) {
@@ -387,7 +391,15 @@ function onUser(u) {
   if (!u) return renderLogin();
   syncState = 'loading'; renderList();
   store.loadSettings(u.uid).then(s => { if (s && s.lastOrg) lastOrg = s.lastOrg; }).catch(() => {});
-  const timer = setTimeout(() => { if (!firstSnap) setSync('err', 'timeout'); }, 10000);
+  const timer = setTimeout(async () => {
+    if (firstSnap) return;
+    setSync('err', 'timeout');
+    const cause = store.diagnose ? await store.diagnose(u.uid) : 'timeout';
+    if (firstSnap || USER !== u) return;
+    // Datenbank antwortet direkt, nur die Live-Verbindung hängt: einmalig auf Long-Polling umstellen und neu laden.
+    if (cause === 'realtime-blocked' && store.useLongPolling && !store.longPolling) { store.useLongPolling(); location.reload(); return; }
+    setSync('err', cause === 'ok' ? 'timeout' : cause);
+  }, 10000);
   unsub = store.subscribeGroups(u.uid, (docs, meta) => { if (!meta.fromCache) clearTimeout(timer); applySnapshot(docs, meta); },
     err => { console.error(err); clearTimeout(timer); setSync('err', err && err.code); });
 }
