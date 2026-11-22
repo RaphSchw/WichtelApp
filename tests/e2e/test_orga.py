@@ -42,6 +42,17 @@ def test_anmeldefehler_wird_verstaendlich_angezeigt(page, base_url):
     page.errors.clear()
 
 
+def test_datenbankfehler_wird_verstaendlich_angezeigt(page, base_url):
+    page.goto(f"{base_url}orga/?test")
+    page.evaluate("sessionStorage.clear(); sessionStorage.setItem('wichtel-test-dbfail', 'permission-denied')")
+    page.reload()
+    page.click("#login")
+    page.wait_for_selector("#sync.off")
+    msg = page.inner_text("#sync")
+    assert "Firestore-Regeln" in msg and "permission-denied" in msg
+    page.errors.clear()
+
+
 def test_schritte_und_organisator_pflicht(orga):
     orga.click("#newg")
     assert "Namen eintragen" in orga.locator(".steps li.cur").inner_text()

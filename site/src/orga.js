@@ -9,7 +9,7 @@ const params = new URLSearchParams(location.search);
 // Basis-Adresse der Gastseite: eine Ebene über /orga/
 const BASE = new URL('../', location.origin + location.pathname).href;
 
-let store = null, USER = null, unsub = null, syncState = 'loading', firstSnap = false;
+let store = null, USER = null, unsub = null, syncState = 'loading', syncCode = '', firstSnap = false;
 let groups = new Map(), view = 'list', modes = {}, openEx = null, lastOrg = '';
 const pendingDel = new Set();
 
@@ -27,15 +27,30 @@ async function flush(id) {
   writing[id] = true;
   const g = groups.get(id);
   try { if (g) await store.saveGroup(USER.uid, g); setSync('ok'); }
-  catch (e) { console.error(e); setSync('err'); }
+  catch (e) { console.error(e); setSync('err', e && e.code); }
   writing[id] = false;
   if (again[id]) { again[id] = false; flush(id); }
 }
 async function saveSettings() { if (!USER) return; try { await store.saveSettings(USER.uid, { lastOrg }); } catch (e) { console.error(e); } }
 
-function setSync(s) { syncState = s; const el = $('sync'); if (el) el.outerHTML = syncHtml(el.dataset.slim === '1'); }
+function setSync(s, code = '') {
+  if (s === 'ok') syncCode = ''; else if (s === 'err') syncCode = code || syncCode || 'timeout';
+  syncState = s; const el = $('sync'); if (el) el.outerHTML = syncHtml(el.dataset.slim === '1');
+}
+// Verständliche Ursache pro Firestore-Fehlercode
+function syncError(code) {
+  return ({
+    'permission-denied': 'Keine Berechtigung für die Datenbank – sind die Firestore-Regeln veröffentlicht?',
+    'not-found': 'Die Firestore-Datenbank gibt es noch nicht – bitte in Firebase anlegen.',
+    'failed-precondition': 'Die Firestore-Datenbank ist noch nicht eingerichtet – bitte in Firebase anlegen.',
+    'unauthenticated': 'Anmeldung abgelaufen – bitte ab- und wieder anmelden.',
+    'resource-exhausted': 'Das kostenlose Tageskontingent der Datenbank ist aufgebraucht – morgen geht es weiter.',
+    'unavailable': 'Datenbank nicht erreichbar – Internetverbindung oder Werbeblocker (z. B. Brave Shields) prüfen.',
+    'timeout': 'Keine Antwort von der Datenbank – Werbeblocker (z. B. Brave Shields) für diese Seite ausschalten oder Internet prüfen.',
+  })[code] || 'Speichern gerade nicht möglich';
+}
 function syncHtml(slim) {
-  const m = { loading: ['', 'Verbinde …'], ok: ['ok', 'Gespeichert – auf all deinen Geräten'], err: ['off', 'Speichern gerade nicht möglich – bitte Internetverbindung prüfen'] }[syncState];
+  const m = { loading: ['', 'Verbinde …'], ok: ['ok', 'Gespeichert – auf all deinen Geräten'], err: ['off', `${syncError(syncCode)} (Fehlercode: ${syncCode})`] }[syncState];
   return `<span class="sync ${m[0]}" id="sync" data-slim="${slim ? 1 : 0}"${slim && syncState !== 'err' ? ' hidden' : ''}><i></i>${m[1]}</span>`;
 }
 
@@ -246,7 +261,7 @@ app.addEventListener('click', async e => {
     pendingDel.add(id); renderList();
     showToast(`„${s.name || 'Unbenannte Runde'}“ gelöscht.`, {
       revert: () => { pendingDel.delete(id); if (view === 'list') renderList(); },
-      commit: async () => { groups.delete(id); try { await store.deleteGroup(USER.uid, id); } catch(err) { setSync('err'); } pendingDel.delete(id); }
+      commit: async () => { groups.delete(id); try { await store.deleteGroup(USER.uid, id); } catch(err) { setSync('err', err && err.code); } pendingDel.delete(id); }
     });
     return;
   }
@@ -372,9 +387,9 @@ function onUser(u) {
   if (!u) return renderLogin();
   syncState = 'loading'; renderList();
   store.loadSettings(u.uid).then(s => { if (s && s.lastOrg) lastOrg = s.lastOrg; }).catch(() => {});
-  const timer = setTimeout(() => { if (!firstSnap) setSync('err'); }, 10000);
+  const timer = setTimeout(() => { if (!firstSnap) setSync('err', 'timeout'); }, 10000);
   unsub = store.subscribeGroups(u.uid, (docs, meta) => { if (!meta.fromCache) clearTimeout(timer); applySnapshot(docs, meta); },
-    err => { console.error(err); clearTimeout(timer); setSync('err'); });
+    err => { console.error(err); clearTimeout(timer); setSync('err', err && err.code); });
 }
 
 async function start() {

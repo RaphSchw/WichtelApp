@@ -18,7 +18,9 @@ export function createMemoryStore() {
       sessionStorage.setItem('wichtel-test-user', '1'); authCb && authCb(user());
     },
     signOut: async () => { sessionStorage.removeItem('wichtel-test-user'); authCb && authCb(null); },
-    subscribeGroups(uid, next) {
+    subscribeGroups(uid, next, error) {
+      const fail = sessionStorage.getItem('wichtel-test-dbfail'); // Datenbankfehler für Tests simulieren
+      if (fail) { setTimeout(() => error && error(Object.assign(new Error(fail), { code: fail })), 30); return () => {}; }
       let prev = new Set();
       const fire = () => {
         const g = (load()[uid] || {}).groups || {};
