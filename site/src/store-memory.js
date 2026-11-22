@@ -12,7 +12,11 @@ export function createMemoryStore() {
   return {
     kind: 'memory',
     onAuth: cb => { authCb = cb; setTimeout(() => cb(user()), 20); return () => { authCb = null; }; },
-    signIn: async () => { sessionStorage.setItem('wichtel-test-user', '1'); authCb && authCb(user()); },
+    signIn: async () => {
+      const fail = sessionStorage.getItem('wichtel-test-fail'); // Fehlerfall für Tests simulieren
+      if (fail) throw Object.assign(new Error(fail), { code: fail });
+      sessionStorage.setItem('wichtel-test-user', '1'); authCb && authCb(user());
+    },
     signOut: async () => { sessionStorage.removeItem('wichtel-test-user'); authCb && authCb(null); },
     subscribeGroups(uid, next) {
       let prev = new Set();

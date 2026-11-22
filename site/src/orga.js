@@ -332,6 +332,22 @@ function applySnapshot(docs, meta) {
   if (changed || view === 'list') { const a = document.activeElement; if (!(a && /INPUT|TEXTAREA/.test(a.tagName) && app.contains(a))) rerender(); }
 }
 
+// Verständliche Meldung pro Firebase-Fehlercode; der Code steht dabei, damit man ihn nachschlagen kann.
+function loginError(code) {
+  const m = {
+    'auth/popup-blocked': 'Das Anmeldefenster wurde blockiert. Bitte Pop-ups für diese Seite erlauben und noch einmal tippen.',
+    'auth/popup-closed-by-user': 'Anmeldung abgebrochen. Tipp noch einmal auf den Knopf.',
+    'auth/cancelled-popup-request': 'Anmeldung abgebrochen. Tipp noch einmal auf den Knopf.',
+    'auth/network-request-failed': 'Keine Verbindung. Bitte Internetverbindung prüfen und noch einmal versuchen.',
+    'auth/configuration-not-found': 'Die Anmeldung ist im Firebase-Projekt noch nicht eingerichtet (Authentication → „Jetzt starten“, dann Google aktivieren).',
+    'auth/operation-not-allowed': 'Die Google-Anmeldung ist im Firebase-Projekt noch nicht aktiviert (Authentication → Anmeldemethode → Google).',
+    'auth/unauthorized-domain': `Diese Adresse (${location.hostname}) ist im Firebase-Projekt nicht freigegeben (Authentication → Einstellungen → Autorisierte Domains).`,
+    'auth/api-key-not-valid.-please-pass-a-valid-api-key.': 'Der Firebase-Schlüssel ist ungültig oder für diese Adresse gesperrt.',
+    'auth/requests-from-referer-<empty>-are-blocked.': 'Der Firebase-Schlüssel ist für diese Adresse gesperrt.',
+  }[code];
+  return (m || 'Anmeldung hat nicht geklappt. Bitte versuch es noch einmal.') + (code ? ` (Fehlercode: ${code})` : '');
+}
+
 function renderLogin(error) {
   document.body.className = '';
   app.innerHTML = headerHtml('Wichtel-Generator', 'Für die Spielleitung: Runden anlegen, auslosen und die Links verschicken.') + `<main>
@@ -344,10 +360,8 @@ function renderLogin(error) {
   $('login').addEventListener('click', async () => {
     try { await store.signIn(); }
     catch (e) {
-      const code = e && e.code || '';
-      renderLogin(code.includes('popup-blocked') ? 'Das Anmeldefenster wurde blockiert. Bitte Pop-ups für diese Seite erlauben und noch einmal tippen.'
-        : code.includes('popup-closed') || code.includes('cancelled') ? 'Anmeldung abgebrochen. Tipp noch einmal auf den Knopf.'
-        : 'Anmeldung hat nicht geklappt. Bitte versuch es noch einmal.');
+      console.error(e);
+      renderLogin(loginError(e && e.code || ''));
     }
   });
 }

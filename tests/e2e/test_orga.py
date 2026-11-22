@@ -31,6 +31,17 @@ def test_anmeldung_noetig(page, base_url):
     assert page.locator("#newg").count() == 0
 
 
+def test_anmeldefehler_wird_verstaendlich_angezeigt(page, base_url):
+    page.goto(f"{base_url}orga/?test")
+    page.evaluate("sessionStorage.clear(); sessionStorage.setItem('wichtel-test-fail', 'auth/configuration-not-found')")
+    page.reload()
+    page.click("#login")
+    msg = page.inner_text(".msg.err")
+    assert "noch nicht eingerichtet" in msg and "auth/configuration-not-found" in msg
+    page.on("console", lambda m: None)
+    page.errors.clear()
+
+
 def test_schritte_und_organisator_pflicht(orga):
     orga.click("#newg")
     assert "Namen eintragen" in orga.locator(".steps li.cur").inner_text()
