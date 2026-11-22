@@ -1,0 +1,10 @@
+{
+  "name": "wichteln",
+  "private": true,
+  "type": "module",
+  "description": "Wichtel-Generator: Auslosung für Wichtel-Runden mit persönlichen Links für alle Gäste.",
+  "scripts": {
+    "test:unit": "node --test tests/unit/*.test.js",
+    "serve": "python3 -m http.server 8000 --directory site"
+  }
+}
