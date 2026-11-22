@@ -36,3 +36,22 @@ def test_kaputter_link(page, base_url):
     page.goto(f"{base_url}#w-abc")
     page.wait_for_selector("h1")
     assert page.inner_text("h1") == "Hoppla!"
+
+
+def test_gastseite_scrollt_auf_kleinem_handy(context, base_url):
+    """Geöffneter Umschlag + Ergebniskarte sind auf kleinen Handys höher als der Bildschirm."""
+    pg = context.new_page()
+    pg.set_viewport_size({"width": 320, "height": 568})
+    token = make_token(["Familienwichteln 2026", "Maximilian", "Gisela-Marie", "25", "2026-12-24", 3, "2026-11-22", "Lisa"])
+    pg.goto(f"{base_url}#w-{token}")
+    pg.click("#openEnv")
+    pg.wait_for_timeout(1500)
+    assert pg.evaluate("getComputedStyle(document.body).overflowY") != "hidden"
+    assert pg.evaluate("document.documentElement.scrollHeight") > 568, "Inhalt sollte höher sein als der Bildschirm"
+    pg.mouse.move(160, 300)
+    pg.mouse.wheel(0, 800)
+    pg.wait_for_timeout(300)
+    assert pg.evaluate("window.scrollY") > 0, "Seite muss sich scrollen lassen"
+    last = pg.locator(".reveal .hint").last
+    last.scroll_into_view_if_needed()
+    assert last.is_visible() and pg.evaluate("document.documentElement.scrollWidth") <= 320

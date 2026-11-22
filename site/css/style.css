@@ -8,7 +8,10 @@
 body{margin:0;color:var(--ink);font:16px/1.55 Outfit,system-ui,sans-serif;overflow-x:clip;background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='none' stroke='%23c8232c' stroke-opacity='.07' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M30 18v24M18 30h24M21.5 21.5l17 17M38.5 21.5l-17 17'/%3E%3Cpath d='M90 78v24M78 90h24M81.5 81.5l17 17M98.5 81.5l-17 17'/%3E%3C/g%3E%3C/svg%3E")}
 [hidden]{display:none!important}
 .band{padding:clamp(28px,4vw,52px) max(5vw,16px) clamp(70px,8vw,96px)}
-.red{background:radial-gradient(ellipse at 20% 0%,#e8434b,transparent 60%),linear-gradient(#d42a33,#a8161f);color:#fff;position:relative;overflow:hidden}
+.red{background:radial-gradient(ellipse at 20% 0%,#e8434b,transparent 60%),linear-gradient(#d42a33,#a8161f);color:#fff;position:relative}
+header.red{overflow:hidden}
+body.red{min-height:100vh;min-height:100dvh;background-attachment:fixed;background-color:#a8161f;overflow-y:auto}
+.stage{overflow:clip}
 svg.snow{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .flake{animation:fall linear infinite}
 @keyframes fall{from{transform:translateY(-100vh)}to{transform:translateY(100vh)}}
