@@ -401,7 +401,16 @@ function onUser(u) {
     setSync('err', cause === 'ok' ? 'timeout' : cause);
   }, 10000);
   unsub = store.subscribeGroups(u.uid, (docs, meta) => { if (!meta.fromCache) clearTimeout(timer); applySnapshot(docs, meta); },
-    err => { console.error(err); clearTimeout(timer); setSync('err', err && err.code); });
+    async err => {
+      console.error(err); clearTimeout(timer);
+      const code = err && err.code;
+      setSync('err', code);
+      // „permission-denied“ kommt auch, wenn die Datenbank fehlt oder der Schlüssel Firestore sperrt – genauer nachfragen.
+      if (code === 'permission-denied' && store.diagnose) {
+        const cause = await store.diagnose(u.uid);
+        if (USER === u && ['no-database', 'api-key-blocked'].includes(cause)) setSync('err', cause);
+      }
+    });
 }
 
 async function start() {

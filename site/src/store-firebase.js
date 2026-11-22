@@ -49,7 +49,8 @@ export async function createFirebaseStore({ emulator = false } = {}) {
         if (r.ok) return 'realtime-blocked';
         if (r.status === 404 && /database.*does not exist|not exist.*database/i.test(body)) return 'no-database';
         if (r.status === 404) return 'realtime-blocked';
-        if (r.status === 403 && /API_KEY|blocked|referer|SERVICE_DISABLED|has not been used/i.test(body)) return 'api-key-blocked';
+        if (r.status === 403 && /SERVICE_DISABLED|has not been used|is disabled/i.test(body)) return 'no-database';
+        if (r.status === 403 && /API_KEY|blocked|referer/i.test(body)) return 'api-key-blocked';
         if (r.status === 403) return 'permission-denied';
         return 'http-' + r.status;
       } catch (e) { console.warn('Firestore-Diagnose fehlgeschlagen', e); return 'network'; }
