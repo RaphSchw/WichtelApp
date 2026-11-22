@@ -31,7 +31,12 @@ tests/emulator/       # Regeln + echter Speicherweg gegen den Firebase-Emulator
 2. Unter **Authentication → Settings → Authorized domains** die Pages-Adresse hinzufügen, z. B. `<github-name>.github.io`.
 3. Unter **Build → Firestore Database** eine Datenbank anlegen und unter **Rules** den Inhalt von [`firestore.rules`](firestore.rules) einfügen und veröffentlichen
    (oder mit der Firebase-CLI: `firebase deploy --only firestore:rules --project <projekt-id>`).
-4. Unter **Projekteinstellungen → Deine Apps** eine Web-App anlegen und die Werte von `firebaseConfig` in [`site/src/config.js`](site/src/config.js) eintragen. Diese Werte sind öffentlich; geschützt werden die Daten durch die Regeln.
+4. Unter **Projekteinstellungen → Deine Apps** eine Web-App anlegen. `apiKey` und `appId` **nicht** in den Code schreiben, sondern im GitHub-Repo unter **Settings → Secrets and variables → Actions** als Secrets `FIREBASE_API_KEY` und `FIREBASE_APP_ID` anlegen. Der Veröffentlichungs-Schritt setzt sie in `site/src/config.js` ein.
+5. In der [Google-Cloud-Konsole → APIs & Dienste → Anmeldedaten](https://console.cloud.google.com/apis/credentials?project=wichtelapp-30310) den Browser-Schlüssel beschränken:
+   - **Anwendungseinschränkungen → Websites:** `https://raphschw.github.io/*` und `https://wichtelapp-30310.firebaseapp.com/*`
+   - **API-Einschränkungen:** Identity Toolkit API, Token Service API, Cloud Firestore API
+
+> Der Schlüssel steht im veröffentlichten Browser-Code zwangsläufig drin – so funktioniert jede Firebase-Web-App. Er identifiziert nur das Projekt; geschützt sind die Daten durch die Regeln und die Domain-Beschränkung.
 
 ### 2. GitHub Pages
 

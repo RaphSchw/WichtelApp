@@ -50,6 +50,25 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Firebase-Schlüssel aus den Secrets einsetzen
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        run: |
+          if [ -z "$FIREBASE_API_KEY" ] || [ -z "$FIREBASE_APP_ID" ]; then
+            echo "::error::Die Secrets FIREBASE_API_KEY und FIREBASE_APP_ID fehlen (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os, pathlib, re
+          p = pathlib.Path("site/src/config.js")
+          s = p.read_text()
+          key, app = os.environ["FIREBASE_API_KEY"].strip(), os.environ["FIREBASE_APP_ID"].strip()
+          assert re.fullmatch(r"AIza[0-9A-Za-z_-]{35}", key), "FIREBASE_API_KEY hat nicht das erwartete Format"
+          assert re.fullmatch(r"\d+:\d+:web:[0-9a-f]+", app), "FIREBASE_APP_ID hat nicht das erwartete Format"
+          assert "__FIREBASE_API_KEY__" in s and "__FIREBASE_APP_ID__" in s
+          p.write_text(s.replace("__FIREBASE_API_KEY__", key).replace("__FIREBASE_APP_ID__", app))
+          PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
